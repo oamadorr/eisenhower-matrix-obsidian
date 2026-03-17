@@ -1,13 +1,3 @@
-/*
- * Matriz de Eisenhower — Plugin para Obsidian
- * Organiza tarefas em 4 quadrantes: Fazer, Agendar, Delegar, Eliminar
- * Input único com toggles de Urgente/Importante
- * - Agendar: pede data
- * - Delegar: pede responsável
- * - Eliminar: já aparece riscada
- * Dados persistidos em "Eisenhower Matrix.md" na raiz do vault
- */
-
 "use strict";
 
 const { Plugin, ItemView } = require("obsidian");
@@ -20,44 +10,42 @@ const QUADRANTS = [
     id: "q1",
     cls: "q1",
     icon: "🔴",
-    title: "Fazer Agora",
-    subtitle: "Urgente + Importante",
-    tag: "fazer",
+    title: "Do Now",
+    subtitle: "Urgent + Important",
+    tag: "do",
   },
   {
     id: "q2",
     cls: "q2",
     icon: "🔵",
-    title: "Agendar",
-    subtitle: "Importante + Não Urgente",
-    tag: "agendar",
+    title: "Schedule",
+    subtitle: "Important + Not Urgent",
+    tag: "schedule",
   },
   {
     id: "q3",
     cls: "q3",
     icon: "🟡",
-    title: "Delegar",
-    subtitle: "Urgente + Não Importante",
-    tag: "delegar",
+    title: "Delegate",
+    subtitle: "Urgent + Not Important",
+    tag: "delegate",
   },
   {
     id: "q4",
     cls: "q4",
     icon: "⚫",
-    title: "Eliminar",
-    subtitle: "Não Urgente + Não Importante",
-    tag: "eliminar",
+    title: "Eliminate",
+    subtitle: "Not Urgent + Not Important",
+    tag: "eliminate",
   },
 ];
 
 function getQuadrant(urgent, important) {
-  if (urgent && important) return "fazer";
-  if (!urgent && important) return "agendar";
-  if (urgent && !important) return "delegar";
-  return "eliminar";
+  if (urgent && important) return "do";
+  if (!urgent && important) return "schedule";
+  if (urgent && !important) return "delegate";
+  return "eliminate";
 }
-
-// ─── VIEW ────────────────────────────────────────────────────────────────────
 
 class EisenhowerView extends ItemView {
   constructor(leaf, plugin) {
@@ -71,7 +59,7 @@ class EisenhowerView extends ItemView {
     return VIEW_TYPE;
   }
   getDisplayText() {
-    return "Matriz de Eisenhower";
+    return "Eisenhower Matrix";
   }
   getIcon() {
     return "layout-grid";
@@ -89,20 +77,17 @@ class EisenhowerView extends ItemView {
 
     const wrap = container.createDiv({ cls: "eisenhower-container" });
 
-    // Header
     const header = wrap.createDiv({ cls: "eisenhower-header" });
-    header.createEl("h2", { text: "Matriz de Eisenhower" });
+    header.createEl("h2", { text: "Eisenhower Matrix" });
 
-    // ─── Input único ─────────────────────────────────────────────
     const inputArea = wrap.createDiv({ cls: "eisenhower-input-area" });
 
     const inputRow = inputArea.createDiv({ cls: "eisenhower-input-row" });
     const input = inputRow.createEl("input", {
-      attr: { type: "text", placeholder: "Escreva a tarefa..." },
+      attr: { type: "text", placeholder: "Type a task..." },
       cls: "eisenhower-input",
     });
 
-    // Campos extras (aparecem conforme o quadrante)
     const extrasRow = inputArea.createDiv({ cls: "eisenhower-extras-row" });
     const today = new Date().toISOString().split("T")[0];
     this.dateInput = extrasRow.createEl("input", {
@@ -110,18 +95,17 @@ class EisenhowerView extends ItemView {
       cls: "eisenhower-date-input hidden",
     });
     this.delegateInput = extrasRow.createEl("input", {
-      attr: { type: "text", placeholder: "Responsável..." },
+      attr: { type: "text", placeholder: "Assignee..." },
       cls: "eisenhower-delegate-input hidden",
     });
 
     const addBtn = inputRow.createEl("button", {
-      text: "Adicionar",
+      text: "Add",
       cls: "eisenhower-add-btn",
     });
 
     const toggleRow = inputArea.createDiv({ cls: "eisenhower-toggle-row" });
 
-    // Toggle Urgente
     const urgentLabel = toggleRow.createEl("label", {
       cls: "eisenhower-toggle",
     });
@@ -132,7 +116,7 @@ class EisenhowerView extends ItemView {
     const urgentSlider = urgentLabel.createSpan({
       cls: `toggle-slider ${this.isUrgent ? "active urgent" : ""}`,
     });
-    urgentLabel.createSpan({ text: "Urgente", cls: "toggle-label" });
+    urgentLabel.createSpan({ text: "Urgent", cls: "toggle-label" });
 
     urgentCb.addEventListener("change", () => {
       this.isUrgent = urgentCb.checked;
@@ -141,7 +125,6 @@ class EisenhowerView extends ItemView {
       this.updateExtras();
     });
 
-    // Toggle Importante
     const importantLabel = toggleRow.createEl("label", {
       cls: "eisenhower-toggle",
     });
@@ -152,7 +135,7 @@ class EisenhowerView extends ItemView {
     const importantSlider = importantLabel.createSpan({
       cls: `toggle-slider ${this.isImportant ? "active important" : ""}`,
     });
-    importantLabel.createSpan({ text: "Importante", cls: "toggle-label" });
+    importantLabel.createSpan({ text: "Important", cls: "toggle-label" });
 
     importantCb.addEventListener("change", () => {
       this.isImportant = importantCb.checked;
@@ -161,7 +144,6 @@ class EisenhowerView extends ItemView {
       this.updateExtras();
     });
 
-    // Preview de destino
     const previewEl = toggleRow.createSpan({ cls: "eisenhower-preview" });
     this.updatePreview(previewEl);
     this.updateExtras();
@@ -174,7 +156,7 @@ class EisenhowerView extends ItemView {
 
       let meta = {};
 
-      if (quadrant === "agendar") {
+      if (quadrant === "schedule") {
         const date = this.dateInput.value;
         if (!date || date < new Date().toISOString().split("T")[0]) {
           this.dateInput.classList.add("input-error");
@@ -185,7 +167,7 @@ class EisenhowerView extends ItemView {
         meta.date = date;
       }
 
-      if (quadrant === "delegar") {
+      if (quadrant === "delegate") {
         const person = this.delegateInput.value.trim();
         if (!person) {
           this.delegateInput.classList.add("input-error");
@@ -196,8 +178,7 @@ class EisenhowerView extends ItemView {
         meta.person = person;
       }
 
-      // Eliminar já entra como done
-      const done = quadrant === "eliminar";
+      const done = quadrant === "eliminate";
 
       await this.plugin.addTask(quadrant, text, done, meta);
       input.value = "";
@@ -211,7 +192,6 @@ class EisenhowerView extends ItemView {
       if (e.key === "Enter") addTask();
     });
 
-    // ─── Grid dos quadrantes ─────────────────────────────────────
     const grid = wrap.createDiv({ cls: "eisenhower-grid" });
 
     for (const q of QUADRANTS) {
@@ -235,7 +215,7 @@ class EisenhowerView extends ItemView {
       if (tasks.length === 0) {
         taskList.createDiv({
           cls: "quadrant-empty",
-          text: "Nenhuma tarefa",
+          text: "No tasks",
         });
       }
     }
@@ -244,15 +224,13 @@ class EisenhowerView extends ItemView {
   updateExtras() {
     const quadrant = getQuadrant(this.isUrgent, this.isImportant);
 
-    // Agendar → mostra campo de data
-    if (quadrant === "agendar") {
+    if (quadrant === "schedule") {
       this.dateInput.classList.remove("hidden");
     } else {
       this.dateInput.classList.add("hidden");
     }
 
-    // Delegar → mostra campo de responsável
-    if (quadrant === "delegar") {
+    if (quadrant === "delegate") {
       this.delegateInput.classList.remove("hidden");
     } else {
       this.delegateInput.classList.add("hidden");
@@ -285,14 +263,13 @@ class EisenhowerView extends ItemView {
       text: task.text,
     });
 
-    // Badge inline no final da linha
-    if (quadrant === "agendar" && task.date) {
+    if (quadrant === "schedule" && task.date) {
       const badge = topRow.createSpan({ cls: "task-badge badge-date" });
       badge.createSpan({ text: "📅 " });
       badge.createSpan({ text: this.formatDate(task.date) });
     }
 
-    if (quadrant === "delegar" && task.person) {
+    if (quadrant === "delegate" && task.person) {
       const badge = topRow.createSpan({ cls: "task-badge badge-person" });
       badge.createSpan({ text: "👤 " });
       badge.createSpan({ text: task.person });
@@ -307,27 +284,25 @@ class EisenhowerView extends ItemView {
 
   formatDate(dateStr) {
     const months = [
-      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-      "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
     const [y, m, d] = dateStr.split("-");
-    return `${parseInt(d)} ${months[parseInt(m) - 1]} ${y}`;
+    return `${months[parseInt(m) - 1]} ${parseInt(d)}, ${y}`;
   }
 }
-
-// ─── PLUGIN ──────────────────────────────────────────────────────────────────
 
 class EisenhowerMatrixPlugin extends Plugin {
   async onload() {
     this.registerView(VIEW_TYPE, (leaf) => new EisenhowerView(leaf, this));
 
-    this.addRibbonIcon("layout-grid", "Matriz de Eisenhower", () => {
+    this.addRibbonIcon("layout-grid", "Eisenhower Matrix", () => {
       this.activateView();
     });
 
     this.addCommand({
       id: "open-eisenhower-matrix",
-      name: "Abrir Matriz de Eisenhower",
+      name: "Open Eisenhower Matrix",
       callback: () => this.activateView(),
     });
   }
@@ -346,12 +321,10 @@ class EisenhowerMatrixPlugin extends Plugin {
 
   onunload() {}
 
-  // ─── Data persistence via markdown file ──────────────────────────────────
-
   async loadData_() {
     const file = this.app.vault.getAbstractFileByPath(DATA_FILE);
     if (!file) {
-      return { fazer: [], agendar: [], delegar: [], eliminar: [] };
+      return { do: [], schedule: [], delegate: [], eliminate: [] };
     }
     const content = await this.app.vault.read(file);
     return this.parseMarkdown(content);
@@ -368,19 +341,19 @@ class EisenhowerMatrixPlugin extends Plugin {
   }
 
   parseMarkdown(content) {
-    const data = { fazer: [], agendar: [], delegar: [], eliminar: [] };
+    const data = { do: [], schedule: [], delegate: [], eliminate: [] };
     let current = null;
 
     for (const line of content.split("\n")) {
       const headerMatch = line.match(
-        /^## .*(Fazer Agora|Agendar|Delegar|Eliminar)/i
+        /^## .*(Do Now|Schedule|Delegate|Eliminate)/i
       );
       if (headerMatch) {
         const h = headerMatch[1].toLowerCase();
-        if (h === "fazer agora") current = "fazer";
-        else if (h === "agendar") current = "agendar";
-        else if (h === "delegar") current = "delegar";
-        else if (h === "eliminar") current = "eliminar";
+        if (h === "do now") current = "do";
+        else if (h === "schedule") current = "schedule";
+        else if (h === "delegate") current = "delegate";
+        else if (h === "eliminate") current = "eliminate";
         continue;
       }
 
@@ -390,7 +363,6 @@ class EisenhowerMatrixPlugin extends Plugin {
           const raw = taskMatch[2].trim();
           const done = taskMatch[1] !== " ";
 
-          // Extrair metadados inline
           let text = raw;
           let date = null;
           let person = null;
@@ -422,7 +394,7 @@ class EisenhowerMatrixPlugin extends Plugin {
       "  - eisenhower",
       "---",
       "",
-      "# Matriz de Eisenhower",
+      "# Eisenhower Matrix",
       "",
     ];
 
@@ -432,14 +404,14 @@ class EisenhowerMatrixPlugin extends Plugin {
       lines.push("");
       const tasks = data[q.tag] || [];
       if (tasks.length === 0) {
-        lines.push("*Nenhuma tarefa*");
+        lines.push("*No tasks*");
       } else {
         for (const t of tasks) {
           let line = `- [${t.done ? "x" : " "}] ${t.text}`;
-          if (q.tag === "delegar" && t.person) {
+          if (q.tag === "delegate" && t.person) {
             line += ` 👤 ${t.person}`;
           }
-          if (q.tag === "agendar" && t.date) {
+          if (q.tag === "schedule" && t.date) {
             line += ` 📅 ${t.date}`;
           }
           lines.push(line);
@@ -450,8 +422,6 @@ class EisenhowerMatrixPlugin extends Plugin {
 
     return lines.join("\n");
   }
-
-  // ─── Task operations ────────────────────────────────────────────────────
 
   async addTask(quadrant, text, done, meta) {
     const data = await this.loadData_();
