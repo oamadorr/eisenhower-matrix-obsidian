@@ -64,50 +64,100 @@ class MoveTaskModal extends Modal {
 
     if (this.targetQuadrant === "schedule") {
       contentEl.createEl("h3", { text: "📅 Schedule date" });
+      contentEl.createEl("p", {
+        text: "Select the due date for this task.",
+        cls: "eisenhower-modal-desc",
+      });
+
       const today = new Date().toISOString().split("T")[0];
       const dateInput = contentEl.createEl("input", {
         attr: { type: "date", min: today },
         cls: "eisenhower-modal-input",
       });
-      dateInput.focus();
-      const btn = contentEl.createEl("button", {
+
+      const errorEl = contentEl.createDiv({ cls: "eisenhower-modal-error hidden" });
+
+      const btnRow = contentEl.createDiv({ cls: "eisenhower-modal-actions" });
+      const cancelBtn = btnRow.createEl("button", {
+        text: "Cancel",
+        cls: "eisenhower-modal-cancel",
+      });
+      const btn = btnRow.createEl("button", {
         text: "Confirm",
         cls: "eisenhower-add-btn eisenhower-modal-btn",
       });
+
+      setTimeout(() => dateInput.focus(), 50);
+
       const submit = () => {
         const date = dateInput.value;
-        if (!date || date < today) {
+        if (!date) {
           dateInput.classList.add("input-error");
+          errorEl.textContent = "Please select a date.";
+          errorEl.classList.remove("hidden");
+          return;
+        }
+        if (date < today) {
+          dateInput.classList.add("input-error");
+          errorEl.textContent = "Date cannot be in the past.";
+          errorEl.classList.remove("hidden");
           return;
         }
         this.onConfirm({ date });
         this.close();
       };
+      dateInput.addEventListener("input", () => {
+        dateInput.classList.remove("input-error");
+        errorEl.classList.add("hidden");
+      });
       btn.addEventListener("click", submit);
+      cancelBtn.addEventListener("click", () => this.close());
       dateInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") submit();
       });
     } else if (this.targetQuadrant === "delegate") {
       contentEl.createEl("h3", { text: "👤 Assignee" });
+      contentEl.createEl("p", {
+        text: "Enter the name of the person responsible for this task.",
+        cls: "eisenhower-modal-desc",
+      });
+
       const personInput = contentEl.createEl("input", {
         attr: { type: "text", placeholder: "Assignee name..." },
         cls: "eisenhower-modal-input",
       });
-      personInput.focus();
-      const btn = contentEl.createEl("button", {
+
+      const errorEl = contentEl.createDiv({ cls: "eisenhower-modal-error hidden" });
+
+      const btnRow = contentEl.createDiv({ cls: "eisenhower-modal-actions" });
+      const cancelBtn = btnRow.createEl("button", {
+        text: "Cancel",
+        cls: "eisenhower-modal-cancel",
+      });
+      const btn = btnRow.createEl("button", {
         text: "Confirm",
         cls: "eisenhower-add-btn eisenhower-modal-btn",
       });
+
+      setTimeout(() => personInput.focus(), 50);
+
       const submit = () => {
         const person = personInput.value.trim();
         if (!person) {
           personInput.classList.add("input-error");
+          errorEl.textContent = "Please enter the assignee name.";
+          errorEl.classList.remove("hidden");
           return;
         }
         this.onConfirm({ person });
         this.close();
       };
+      personInput.addEventListener("input", () => {
+        personInput.classList.remove("input-error");
+        errorEl.classList.add("hidden");
+      });
       btn.addEventListener("click", submit);
+      cancelBtn.addEventListener("click", () => this.close());
       personInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") submit();
       });

@@ -410,21 +410,33 @@
 
 /* ─── Modal de mover tarefa ───────────────────────────────── */
 
+.eisenhower-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .eisenhower-modal h3 {
-  margin: 0 0 12px 0;
-  font-size: 1.1em;
+  margin: 0;
+  font-size: 1.15em;
+}
+
+.eisenhower-modal-desc {
+  margin: 0 0 8px 0;
+  font-size: 0.85em;
+  color: var(--text-muted);
 }
 
 .eisenhower-modal-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 6px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   color: var(--text-normal);
   font-size: 0.95em;
-  margin-bottom: 12px;
   box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .eisenhower-modal-input:focus {
@@ -432,8 +444,39 @@
   outline: none;
 }
 
+.eisenhower-modal-error {
+  font-size: 0.82em;
+  color: #e74c3c;
+  margin: 4px 0 0 0;
+  min-height: 1.2em;
+}
+
+.eisenhower-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.eisenhower-modal-cancel {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.eisenhower-modal-cancel:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
 .eisenhower-modal-btn {
-  width: 100%;
+  padding: 8px 24px;
 }
 
 /* ─── Tarefas eliminadas (já riscadas) ────────────────────── */
