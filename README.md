@@ -29,10 +29,29 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 
 ## Features
 
+### Core
 - **Toggle-based input** — flip the Urgent and Important switches and the task is automatically routed to the correct quadrant
 - **Smart contextual fields** — Schedule tasks prompt for a due date 📅, Delegate tasks prompt for an assignee 👤
 - **Markdown persistence** — all tasks are saved as a readable `Eisenhower Matrix.md` file in your vault, fully compatible with search, backlinks, and Dataview
-- **Works everywhere** — fully functional on both desktop and mobile
+- **Inline editing** — click any task text to edit it in place; <kbd>Enter</kbd> to save, <kbd>Escape</kbd> to cancel
+
+### Organization
+- **Drag & drop** — move tasks between quadrants by dragging them
+- **Reorder within quadrant** — drag tasks inside the same quadrant to change priority order
+- **Hide/show completed** — toggle to hide finished tasks and focus on what's pending
+- **Task counter** — each quadrant shows `(pending/total)` at a glance
+- **Delete confirmation** — clicking ✕ opens a confirmation menu to prevent accidental deletion
+
+### Scheduling & Delegation
+- **Quick date buttons** — pick "Tomorrow", "+7 days", or "+30 days" instead of manually selecting a date
+- **Assignee autocomplete** — previously used names appear as clickable chips for quick selection
+- **Overdue alerts** — past-due Schedule tasks are highlighted in red with a ⚠️ badge
+- **Move with context** — moving a task to Schedule or Delegate opens a modal to set the date or assignee
+
+### Settings
+- **Custom data file** — choose which markdown file stores your tasks
+- **Auto-complete Eliminate** — tasks added to Eliminate are automatically marked as done
+- **Responsive layout** — works on desktop, tablet, and mobile screens
 
 ## How to Use
 
@@ -40,7 +59,7 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 2. Type your task in the input field
 3. Toggle **Urgent** and/or **Important** to select the target quadrant
 4. Click **Add** or press <kbd>Enter</kbd>
-5. Check off completed tasks ✓ or remove them with ✕
+5. Check off completed tasks ✓, click text to edit, or drag to reorganize
 
 ## Installation
 
