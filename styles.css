@@ -408,6 +408,34 @@
   border-left: 3px solid #e74c3c !important;
 }
 
+/* ─── Modal de mover tarefa ───────────────────────────────── */
+
+.eisenhower-modal h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.1em;
+}
+
+.eisenhower-modal-input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.95em;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.eisenhower-modal-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
+
+.eisenhower-modal-btn {
+  width: 100%;
+}
+
 /* ─── Tarefas eliminadas (já riscadas) ────────────────────── */
 
 .task-done-row {

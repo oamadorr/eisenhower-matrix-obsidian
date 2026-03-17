@@ -1,6 +1,6 @@
 "use strict";
 
-const { Plugin, ItemView, PluginSettingTab, Setting, Menu } = require("obsidian");
+const { Plugin, ItemView, PluginSettingTab, Setting, Menu, Modal } = require("obsidian");
 
 const VIEW_TYPE = "eisenhower-matrix-view";
 
@@ -51,6 +51,74 @@ function getQuadrant(urgent, important) {
   return "eliminate";
 }
 
+class MoveTaskModal extends Modal {
+  constructor(app, targetQuadrant, onConfirm) {
+    super(app);
+    this.targetQuadrant = targetQuadrant;
+    this.onConfirm = onConfirm;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.addClass("eisenhower-modal");
+
+    if (this.targetQuadrant === "schedule") {
+      contentEl.createEl("h3", { text: "📅 Schedule date" });
+      const today = new Date().toISOString().split("T")[0];
+      const dateInput = contentEl.createEl("input", {
+        attr: { type: "date", min: today },
+        cls: "eisenhower-modal-input",
+      });
+      dateInput.focus();
+      const btn = contentEl.createEl("button", {
+        text: "Confirm",
+        cls: "eisenhower-add-btn eisenhower-modal-btn",
+      });
+      const submit = () => {
+        const date = dateInput.value;
+        if (!date || date < today) {
+          dateInput.classList.add("input-error");
+          return;
+        }
+        this.onConfirm({ date });
+        this.close();
+      };
+      btn.addEventListener("click", submit);
+      dateInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submit();
+      });
+    } else if (this.targetQuadrant === "delegate") {
+      contentEl.createEl("h3", { text: "👤 Assignee" });
+      const personInput = contentEl.createEl("input", {
+        attr: { type: "text", placeholder: "Assignee name..." },
+        cls: "eisenhower-modal-input",
+      });
+      personInput.focus();
+      const btn = contentEl.createEl("button", {
+        text: "Confirm",
+        cls: "eisenhower-add-btn eisenhower-modal-btn",
+      });
+      const submit = () => {
+        const person = personInput.value.trim();
+        if (!person) {
+          personInput.classList.add("input-error");
+          return;
+        }
+        this.onConfirm({ person });
+        this.close();
+      };
+      btn.addEventListener("click", submit);
+      personInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submit();
+      });
+    }
+  }
+
+  onClose() {
+    this.contentEl.empty();
+  }
+}
+
 class EisenhowerView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -77,6 +145,22 @@ class EisenhowerView extends ItemView {
   clearDropHighlights() {
     const quadrants = this.containerEl.querySelectorAll(".eisenhower-quadrant");
     quadrants.forEach((el) => el.classList.remove("quadrant-dragover"));
+  }
+
+  promptAndMoveTask(fromQuadrant, index, toQuadrant) {
+    if (toQuadrant === "schedule") {
+      new MoveTaskModal(this.app, "schedule", async (meta) => {
+        await this.plugin.moveTask(fromQuadrant, index, toQuadrant, meta);
+        await this.render();
+      }).open();
+    } else if (toQuadrant === "delegate") {
+      new MoveTaskModal(this.app, "delegate", async (meta) => {
+        await this.plugin.moveTask(fromQuadrant, index, toQuadrant, meta);
+        await this.render();
+      }).open();
+    } else {
+      this.plugin.moveTask(fromQuadrant, index, toQuadrant).then(() => this.render());
+    }
   }
 
   async render() {
@@ -235,18 +319,13 @@ class EisenhowerView extends ItemView {
           quadrantEl.classList.remove("quadrant-dragover");
         }
       });
-      quadrantEl.addEventListener("drop", async (e) => {
+      quadrantEl.addEventListener("drop", (e) => {
         e.preventDefault();
         this.clearDropHighlights();
         try {
           const transfer = JSON.parse(e.dataTransfer.getData("text/plain"));
           if (transfer.quadrant !== q.tag) {
-            await this.plugin.moveTask(
-              transfer.quadrant,
-              transfer.index,
-              q.tag
-            );
-            await this.render();
+            this.promptAndMoveTask(transfer.quadrant, transfer.index, q.tag);
           }
         } catch (err) {
           /* ignore bad data */
@@ -380,9 +459,8 @@ class EisenhowerView extends ItemView {
       for (const q of QUADRANTS) {
         if (q.tag !== quadrant) {
           menu.addItem((item) => {
-            item.setTitle(`${q.icon} ${q.title}`).onClick(async () => {
-              await this.plugin.moveTask(quadrant, index, q.tag);
-              await this.render();
+            item.setTitle(`${q.icon} ${q.title}`).onClick(() => {
+              this.promptAndMoveTask(quadrant, index, q.tag);
             });
           });
         }
@@ -629,7 +707,7 @@ class EisenhowerMatrixPlugin extends Plugin {
     }
   }
 
-  async moveTask(fromQuadrant, index, toQuadrant) {
+  async moveTask(fromQuadrant, index, toQuadrant, meta) {
     const data = await this.loadData_();
     if (!data[fromQuadrant] || !data[fromQuadrant][index]) return;
 
@@ -648,6 +726,9 @@ class EisenhowerMatrixPlugin extends Plugin {
     if (fromQuadrant === "delegate" && toQuadrant !== "delegate") {
       task.person = null;
     }
+
+    if (meta && meta.date) task.date = meta.date;
+    if (meta && meta.person) task.person = meta.person;
 
     if (!data[toQuadrant]) data[toQuadrant] = [];
     data[toQuadrant].push(task);
