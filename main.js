@@ -52,10 +52,11 @@ function getQuadrant(urgent, important) {
 }
 
 class MoveTaskModal extends Modal {
-  constructor(app, targetQuadrant, onConfirm) {
+  constructor(app, targetQuadrant, onConfirm, plugin) {
     super(app);
     this.targetQuadrant = targetQuadrant;
     this.onConfirm = onConfirm;
+    this.plugin = plugin;
   }
 
   onOpen() {
@@ -69,11 +70,33 @@ class MoveTaskModal extends Modal {
         cls: "eisenhower-modal-desc",
       });
 
+      /* Quick date buttons */
+      const quickDatesRow = contentEl.createDiv({ cls: "eisenhower-modal-quick-dates" });
+      const addDays = (days) => {
+        const d = new Date();
+        d.setDate(d.getDate() + days);
+        return d.toISOString().split("T")[0];
+      };
+      const quickDates = [
+        { label: "Tomorrow", value: addDays(1) },
+        { label: "+7 days", value: addDays(7) },
+        { label: "+30 days", value: addDays(30) },
+      ];
+
       const today = new Date().toISOString().split("T")[0];
       const dateInput = contentEl.createEl("input", {
         attr: { type: "date", min: today },
         cls: "eisenhower-modal-input",
       });
+
+      for (const qd of quickDates) {
+        const qBtn = quickDatesRow.createEl("button", { text: qd.label });
+        qBtn.addEventListener("click", () => {
+          dateInput.value = qd.value;
+          dateInput.classList.remove("input-error");
+          errorEl.classList.add("hidden");
+        });
+      }
 
       const errorEl = contentEl.createDiv({ cls: "eisenhower-modal-error hidden" });
 
@@ -126,6 +149,30 @@ class MoveTaskModal extends Modal {
         attr: { type: "text", placeholder: "Assignee name..." },
         cls: "eisenhower-modal-input",
       });
+
+      /* Autocomplete suggestions */
+      const suggestionsRow = contentEl.createDiv({ cls: "eisenhower-modal-suggestions" });
+      if (this.plugin) {
+        this.plugin.loadData_().then((data) => {
+          const persons = new Set();
+          for (const key of Object.keys(data)) {
+            for (const t of data[key]) {
+              if (t.person) persons.add(t.person);
+            }
+          }
+          for (const name of persons) {
+            const chip = suggestionsRow.createEl("button", {
+              text: name,
+              cls: "eisenhower-suggestion-chip",
+            });
+            chip.addEventListener("click", () => {
+              personInput.value = name;
+              personInput.classList.remove("input-error");
+              errorEl.classList.add("hidden");
+            });
+          }
+        });
+      }
 
       const errorEl = contentEl.createDiv({ cls: "eisenhower-modal-error hidden" });
 
@@ -202,12 +249,12 @@ class EisenhowerView extends ItemView {
       new MoveTaskModal(this.app, "schedule", async (meta) => {
         await this.plugin.moveTask(fromQuadrant, index, toQuadrant, meta);
         await this.render();
-      }).open();
+      }, this.plugin).open();
     } else if (toQuadrant === "delegate") {
       new MoveTaskModal(this.app, "delegate", async (meta) => {
         await this.plugin.moveTask(fromQuadrant, index, toQuadrant, meta);
         await this.render();
-      }).open();
+      }, this.plugin).open();
     } else {
       this.plugin.moveTask(fromQuadrant, index, toQuadrant).then(() => this.render());
     }
@@ -251,10 +298,64 @@ class EisenhowerView extends ItemView {
       attr: { type: "date", min: today },
       cls: "eisenhower-date-input hidden",
     });
+    this.dateInput.addEventListener("input", () => {
+      this.dateInput.classList.remove("input-error");
+      if (this.dateError) this.dateError.classList.add("hidden");
+    });
+
+    /* Quick date buttons in main form */
+    this.dateQuickBtns = extrasRow.createDiv({ cls: "eisenhower-modal-quick-dates hidden" });
+    const addDays = (days) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split("T")[0];
+    };
+    const mainQuickDates = [
+      { label: "Tomorrow", value: addDays(1) },
+      { label: "+7 days", value: addDays(7) },
+      { label: "+30 days", value: addDays(30) },
+    ];
+    for (const qd of mainQuickDates) {
+      const qBtn = this.dateQuickBtns.createEl("button", { text: qd.label });
+      qBtn.addEventListener("click", () => {
+        this.dateInput.value = qd.value;
+        this.dateInput.classList.remove("input-error");
+        if (this.dateError) this.dateError.classList.add("hidden");
+      });
+    }
+
+    this.dateError = extrasRow.createDiv({ cls: "eisenhower-modal-error hidden" });
+
     this.delegateInput = extrasRow.createEl("input", {
       attr: { type: "text", placeholder: "Assignee..." },
       cls: "eisenhower-delegate-input hidden",
     });
+    this.delegateInput.addEventListener("input", () => {
+      this.delegateInput.classList.remove("input-error");
+      if (this.delegateError) this.delegateError.classList.add("hidden");
+    });
+
+    this.delegateError = extrasRow.createDiv({ cls: "eisenhower-modal-error hidden" });
+
+    /* Autocomplete for delegate input in main form */
+    this.delegateSuggestions = extrasRow.createDiv({ cls: "eisenhower-modal-suggestions hidden" });
+    const persons = new Set();
+    for (const key of Object.keys(data)) {
+      for (const t of data[key]) {
+        if (t.person) persons.add(t.person);
+      }
+    }
+    for (const name of persons) {
+      const chip = this.delegateSuggestions.createEl("button", {
+        text: name,
+        cls: "eisenhower-suggestion-chip",
+      });
+      chip.addEventListener("click", () => {
+        this.delegateInput.value = name;
+        this.delegateInput.classList.remove("input-error");
+        if (this.delegateError) this.delegateError.classList.add("hidden");
+      });
+    }
 
     const addBtn = inputRow.createEl("button", {
       text: "Add",
@@ -315,12 +416,22 @@ class EisenhowerView extends ItemView {
 
       if (quadrant === "schedule") {
         const date = this.dateInput.value;
-        if (!date || date < new Date().toISOString().split("T")[0]) {
+        if (!date) {
           this.dateInput.classList.add("input-error");
+          this.dateError.textContent = "Please select a date.";
+          this.dateError.classList.remove("hidden");
+          this.dateInput.focus();
+          return;
+        }
+        if (date < new Date().toISOString().split("T")[0]) {
+          this.dateInput.classList.add("input-error");
+          this.dateError.textContent = "Date cannot be in the past.";
+          this.dateError.classList.remove("hidden");
           this.dateInput.focus();
           return;
         }
         this.dateInput.classList.remove("input-error");
+        this.dateError.classList.add("hidden");
         meta.date = date;
       }
 
@@ -328,10 +439,13 @@ class EisenhowerView extends ItemView {
         const person = this.delegateInput.value.trim();
         if (!person) {
           this.delegateInput.classList.add("input-error");
+          this.delegateError.textContent = "Please enter the assignee name.";
+          this.delegateError.classList.remove("hidden");
           this.delegateInput.focus();
           return;
         }
         this.delegateInput.classList.remove("input-error");
+        this.delegateError.classList.add("hidden");
         meta.person = person;
       }
 
@@ -358,6 +472,15 @@ class EisenhowerView extends ItemView {
         cls: `eisenhower-quadrant ${q.cls}`,
       });
 
+      /* Quadrant data */
+      const tasks = data[q.tag] || [];
+      const pending = tasks.filter((t) => !t.done).length;
+
+      /* Filter display (hide completed) */
+      const displayTasks = this.hideCompleted
+        ? tasks.filter((t) => !t.done)
+        : tasks;
+
       /* Drag & Drop — drop zone */
       quadrantEl.addEventListener("dragover", (e) => {
         e.preventDefault();
@@ -374,17 +497,27 @@ class EisenhowerView extends ItemView {
         this.clearDropHighlights();
         try {
           const transfer = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (transfer.quadrant !== q.tag) {
+          if (transfer.quadrant === q.tag) {
+            /* Reorder within same quadrant */
+            const taskEls = quadrantEl.querySelectorAll(".eisenhower-task");
+            let toIndex = tasks.length;
+            for (let ti = 0; ti < taskEls.length; ti++) {
+              const rect = taskEls[ti].getBoundingClientRect();
+              if (e.clientY < rect.top + rect.height / 2) {
+                toIndex = parseInt(taskEls[ti].dataset.originalIndex);
+                break;
+              }
+            }
+            if (transfer.index !== toIndex) {
+              this.plugin.reorderTask(q.tag, transfer.index, toIndex).then(() => this.render());
+            }
+          } else {
             this.promptAndMoveTask(transfer.quadrant, transfer.index, q.tag);
           }
         } catch (err) {
           /* ignore bad data */
         }
       });
-
-      /* Quadrant data */
-      const tasks = data[q.tag] || [];
-      const pending = tasks.filter((t) => !t.done).length;
 
       /* Title + counter */
       const titleEl = quadrantEl.createDiv({ cls: "quadrant-title" });
@@ -398,11 +531,6 @@ class EisenhowerView extends ItemView {
       quadrantEl.createDiv({ cls: "quadrant-subtitle", text: q.subtitle });
 
       const taskList = quadrantEl.createDiv({ cls: "quadrant-tasks" });
-
-      /* Filter display (hide completed) */
-      const displayTasks = this.hideCompleted
-        ? tasks.filter((t) => !t.done)
-        : tasks;
 
       for (let i = 0; i < displayTasks.length; i++) {
         const originalIndex = tasks.indexOf(displayTasks[i]);
@@ -426,14 +554,27 @@ class EisenhowerView extends ItemView {
 
     if (quadrant === "schedule") {
       this.dateInput.classList.remove("hidden");
+      if (this.dateQuickBtns) this.dateQuickBtns.classList.remove("hidden");
     } else {
       this.dateInput.classList.add("hidden");
+      if (this.dateQuickBtns) this.dateQuickBtns.classList.add("hidden");
+    }
+    // Reset date error when switching quadrants
+    if (this.dateError) {
+      this.dateError.classList.add("hidden");
+      this.dateInput.classList.remove("input-error");
     }
 
     if (quadrant === "delegate") {
       this.delegateInput.classList.remove("hidden");
+      if (this.delegateSuggestions) this.delegateSuggestions.classList.remove("hidden");
     } else {
       this.delegateInput.classList.add("hidden");
+      if (this.delegateSuggestions) this.delegateSuggestions.classList.add("hidden");
+    }
+    if (this.delegateError) {
+      this.delegateError.classList.add("hidden");
+      this.delegateInput.classList.remove("input-error");
     }
   }
 
@@ -454,6 +595,7 @@ class EisenhowerView extends ItemView {
         isOverdue ? "task-overdue" : ""
       }`,
     });
+    card.dataset.originalIndex = index;
 
     /* Drag & Drop — draggable */
     card.setAttribute("draggable", "true");
@@ -478,9 +620,42 @@ class EisenhowerView extends ItemView {
       await this.render();
     });
 
-    topRow.createSpan({
+    /* Inline editing on click */
+    const textSpan = topRow.createSpan({
       cls: `task-text${task.done ? " done" : ""}`,
       text: task.text,
+    });
+    textSpan.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (task.done) return;
+      const currentText = task.text;
+      const editInput = document.createElement("input");
+      editInput.type = "text";
+      editInput.value = currentText;
+      editInput.className = "task-text-editing";
+      textSpan.replaceWith(editInput);
+      editInput.focus();
+      editInput.select();
+      let saved = false;
+      const save = async () => {
+        if (saved) return;
+        saved = true;
+        const newText = editInput.value.trim();
+        if (newText && newText !== currentText) {
+          await this.plugin.updateTaskText(quadrant, index, newText);
+        }
+        await this.render();
+      };
+      const cancel = () => {
+        if (saved) return;
+        saved = true;
+        this.render();
+      };
+      editInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); save(); }
+        if (ev.key === "Escape") { ev.preventDefault(); cancel(); }
+      });
+      editInput.addEventListener("blur", save);
     });
 
     /* Date badge / overdue */
@@ -518,11 +693,20 @@ class EisenhowerView extends ItemView {
       menu.showAtMouseEvent(e);
     });
 
-    /* Delete button */
+    /* Delete button with confirmation */
     const del = topRow.createSpan({ cls: "task-delete", text: "✕" });
-    del.addEventListener("click", async () => {
-      await this.plugin.removeTask(quadrant, index);
-      await this.render();
+    del.addEventListener("click", (e) => {
+      const menu = new Menu();
+      menu.addItem((item) => {
+        item
+          .setTitle("Delete task")
+          .setIcon("trash")
+          .onClick(async () => {
+            await this.plugin.removeTask(quadrant, index);
+            await this.render();
+          });
+      });
+      menu.showAtMouseEvent(e);
     });
   }
 
@@ -755,6 +939,25 @@ class EisenhowerMatrixPlugin extends Plugin {
       data[quadrant][index].done = !data[quadrant][index].done;
       await this.saveData_(data);
     }
+  }
+
+  async updateTaskText(quadrant, index, newText) {
+    const data = await this.loadData_();
+    if (data[quadrant] && data[quadrant][index]) {
+      data[quadrant][index].text = newText;
+      await this.saveData_(data);
+    }
+  }
+
+  async reorderTask(quadrant, fromIndex, toIndex) {
+    const data = await this.loadData_();
+    if (!data[quadrant]) return;
+    const tasks = data[quadrant];
+    if (fromIndex < 0 || fromIndex >= tasks.length) return;
+    const [task] = tasks.splice(fromIndex, 1);
+    const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    tasks.splice(insertAt, 0, task);
+    await this.saveData_(data);
   }
 
   async moveTask(fromQuadrant, index, toQuadrant, meta) {
