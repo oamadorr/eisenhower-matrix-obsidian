@@ -17,6 +17,36 @@
   font-size: 1.4em;
 }
 
+.eisenhower-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* ─── Toggle esconder concluídas ─────────────────────────── */
+
+.eisenhower-hide-toggle {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 0.85em;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.eisenhower-hide-toggle:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.eisenhower-hide-toggle.active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
 /* ─── Input único ─────────────────────────────────────────── */
 
 .eisenhower-input-area {
@@ -197,6 +227,7 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--background-modifier-border);
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .eisenhower-quadrant.q1 {
@@ -219,6 +250,13 @@
   border-left: 4px solid #95a5a6;
 }
 
+/* ─── Drag & Drop — quadrant highlight ───────────────────── */
+
+.eisenhower-quadrant.quadrant-dragover {
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+
 .quadrant-title {
   font-weight: 700;
   font-size: 0.95em;
@@ -226,6 +264,13 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.quadrant-counter {
+  font-size: 0.8em;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
 }
 
 .quadrant-subtitle {
@@ -260,14 +305,22 @@
   border-radius: 6px;
   font-size: 0.88em;
   background: var(--background-primary);
-  cursor: default;
+  cursor: grab;
   border: 1px solid transparent;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.eisenhower-task:active {
+  cursor: grabbing;
 }
 
 .eisenhower-task:hover {
   border-color: var(--background-modifier-border);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.eisenhower-task.task-dragging {
+  opacity: 0.4;
 }
 
 .task-top-row {
@@ -294,6 +347,7 @@
   font-weight: 400;
 }
 
+.task-top-row .task-move,
 .task-top-row .task-delete {
   opacity: 0;
   cursor: pointer;
@@ -305,8 +359,14 @@
   flex-shrink: 0;
 }
 
+.eisenhower-task:hover .task-move,
 .eisenhower-task:hover .task-delete {
   opacity: 1;
+}
+
+.task-top-row .task-move:hover {
+  color: var(--interactive-accent);
+  background: rgba(46, 134, 222, 0.1);
 }
 
 .task-top-row .task-delete:hover {
@@ -335,6 +395,17 @@
 .badge-person {
   background: rgba(241, 196, 15, 0.15);
   color: #f0c940;
+}
+
+/* ─── Overdue alert ───────────────────────────────────────── */
+
+.badge-overdue {
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.task-overdue {
+  border-left: 3px solid #e74c3c !important;
 }
 
 /* ─── Tarefas eliminadas (já riscadas) ────────────────────── */

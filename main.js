@@ -1,9 +1,13 @@
 "use strict";
 
-const { Plugin, ItemView } = require("obsidian");
+const { Plugin, ItemView, PluginSettingTab, Setting, Menu } = require("obsidian");
 
 const VIEW_TYPE = "eisenhower-matrix-view";
-const DATA_FILE = "Eisenhower Matrix.md";
+
+const DEFAULT_SETTINGS = {
+  dataFile: "Eisenhower Matrix.md",
+  autoCompleteEliminate: true,
+};
 
 const QUADRANTS = [
   {
@@ -53,6 +57,7 @@ class EisenhowerView extends ItemView {
     this.plugin = plugin;
     this.isUrgent = false;
     this.isImportant = false;
+    this.hideCompleted = false;
   }
 
   getViewType() {
@@ -69,6 +74,11 @@ class EisenhowerView extends ItemView {
     await this.render();
   }
 
+  clearDropHighlights() {
+    const quadrants = this.containerEl.querySelectorAll(".eisenhower-quadrant");
+    quadrants.forEach((el) => el.classList.remove("quadrant-dragover"));
+  }
+
   async render() {
     const container = this.containerEl.children[1];
     container.empty();
@@ -77,9 +87,22 @@ class EisenhowerView extends ItemView {
 
     const wrap = container.createDiv({ cls: "eisenhower-container" });
 
+    /* ── Header with hide-completed toggle ── */
     const header = wrap.createDiv({ cls: "eisenhower-header" });
-    header.createEl("h2", { text: "Eisenhower Matrix" });
+    const headerRow = header.createDiv({ cls: "eisenhower-header-row" });
+    headerRow.createEl("h2", { text: "Eisenhower Matrix" });
 
+    const toggleBtn = headerRow.createEl("button", {
+      cls: `eisenhower-hide-toggle ${this.hideCompleted ? "active" : ""}`,
+      attr: { title: this.hideCompleted ? "Show completed" : "Hide completed" },
+    });
+    toggleBtn.createSpan({ text: this.hideCompleted ? "👁️‍🗨️" : "👁️" });
+    toggleBtn.addEventListener("click", () => {
+      this.hideCompleted = !this.hideCompleted;
+      this.render();
+    });
+
+    /* ── Input area ── */
     const inputArea = wrap.createDiv({ cls: "eisenhower-input-area" });
 
     const inputRow = inputArea.createDiv({ cls: "eisenhower-input-row" });
@@ -178,7 +201,8 @@ class EisenhowerView extends ItemView {
         meta.person = person;
       }
 
-      const done = quadrant === "eliminate";
+      const done =
+        this.plugin.settings.autoCompleteEliminate && quadrant === "eliminate";
 
       await this.plugin.addTask(quadrant, text, done, meta);
       input.value = "";
@@ -192,30 +216,77 @@ class EisenhowerView extends ItemView {
       if (e.key === "Enter") addTask();
     });
 
+    /* ── Quadrant grid ── */
     const grid = wrap.createDiv({ cls: "eisenhower-grid" });
 
     for (const q of QUADRANTS) {
-      const quadrant = grid.createDiv({
+      const quadrantEl = grid.createDiv({
         cls: `eisenhower-quadrant ${q.cls}`,
       });
 
-      const titleEl = quadrant.createDiv({ cls: "quadrant-title" });
+      /* Drag & Drop — drop zone */
+      quadrantEl.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        this.clearDropHighlights();
+        quadrantEl.classList.add("quadrant-dragover");
+      });
+      quadrantEl.addEventListener("dragleave", (e) => {
+        if (!quadrantEl.contains(e.relatedTarget)) {
+          quadrantEl.classList.remove("quadrant-dragover");
+        }
+      });
+      quadrantEl.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        this.clearDropHighlights();
+        try {
+          const transfer = JSON.parse(e.dataTransfer.getData("text/plain"));
+          if (transfer.quadrant !== q.tag) {
+            await this.plugin.moveTask(
+              transfer.quadrant,
+              transfer.index,
+              q.tag
+            );
+            await this.render();
+          }
+        } catch (err) {
+          /* ignore bad data */
+        }
+      });
+
+      /* Quadrant data */
+      const tasks = data[q.tag] || [];
+      const pending = tasks.filter((t) => !t.done).length;
+
+      /* Title + counter */
+      const titleEl = quadrantEl.createDiv({ cls: "quadrant-title" });
       titleEl.createSpan({ text: q.icon });
       titleEl.createSpan({ text: q.title });
+      titleEl.createSpan({
+        cls: "quadrant-counter",
+        text: `(${pending}/${tasks.length})`,
+      });
 
-      quadrant.createDiv({ cls: "quadrant-subtitle", text: q.subtitle });
+      quadrantEl.createDiv({ cls: "quadrant-subtitle", text: q.subtitle });
 
-      const taskList = quadrant.createDiv({ cls: "quadrant-tasks" });
+      const taskList = quadrantEl.createDiv({ cls: "quadrant-tasks" });
 
-      const tasks = data[q.tag] || [];
-      for (let i = 0; i < tasks.length; i++) {
-        this.renderTask(taskList, tasks[i], q.tag, i);
+      /* Filter display (hide completed) */
+      const displayTasks = this.hideCompleted
+        ? tasks.filter((t) => !t.done)
+        : tasks;
+
+      for (let i = 0; i < displayTasks.length; i++) {
+        const originalIndex = tasks.indexOf(displayTasks[i]);
+        this.renderTask(taskList, displayTasks[i], q.tag, originalIndex);
       }
 
-      if (tasks.length === 0) {
+      if (displayTasks.length === 0) {
         taskList.createDiv({
           cls: "quadrant-empty",
-          text: "No tasks",
+          text:
+            this.hideCompleted && tasks.length > 0
+              ? `${tasks.length} completed task(s)`
+              : "No tasks",
         });
       }
     }
@@ -245,8 +316,28 @@ class EisenhowerView extends ItemView {
   }
 
   renderTask(parent, task, quadrant, index) {
+    const today = new Date().toISOString().split("T")[0];
+    const isOverdue =
+      quadrant === "schedule" && task.date && task.date < today && !task.done;
+
     const card = parent.createDiv({
-      cls: `eisenhower-task ${task.done ? "task-done-row" : ""}`,
+      cls: `eisenhower-task ${task.done ? "task-done-row" : ""} ${
+        isOverdue ? "task-overdue" : ""
+      }`,
+    });
+
+    /* Drag & Drop — draggable */
+    card.setAttribute("draggable", "true");
+    card.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData(
+        "text/plain",
+        JSON.stringify({ quadrant, index })
+      );
+      card.classList.add("task-dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("task-dragging");
+      this.clearDropHighlights();
     });
 
     const topRow = card.createDiv({ cls: "task-top-row" });
@@ -263,10 +354,17 @@ class EisenhowerView extends ItemView {
       text: task.text,
     });
 
+    /* Date badge / overdue */
     if (quadrant === "schedule" && task.date) {
-      const badge = topRow.createSpan({ cls: "task-badge badge-date" });
-      badge.createSpan({ text: "📅 " });
-      badge.createSpan({ text: this.formatDate(task.date) });
+      if (isOverdue) {
+        const badge = topRow.createSpan({ cls: "task-badge badge-overdue" });
+        badge.createSpan({ text: "⚠️ " });
+        badge.createSpan({ text: this.formatDate(task.date) });
+      } else {
+        const badge = topRow.createSpan({ cls: "task-badge badge-date" });
+        badge.createSpan({ text: "📅 " });
+        badge.createSpan({ text: this.formatDate(task.date) });
+      }
     }
 
     if (quadrant === "delegate" && task.person) {
@@ -275,6 +373,24 @@ class EisenhowerView extends ItemView {
       badge.createSpan({ text: task.person });
     }
 
+    /* Move menu button */
+    const moveBtn = topRow.createSpan({ cls: "task-move", text: "⇄" });
+    moveBtn.addEventListener("click", (e) => {
+      const menu = new Menu();
+      for (const q of QUADRANTS) {
+        if (q.tag !== quadrant) {
+          menu.addItem((item) => {
+            item.setTitle(`${q.icon} ${q.title}`).onClick(async () => {
+              await this.plugin.moveTask(quadrant, index, q.tag);
+              await this.render();
+            });
+          });
+        }
+      }
+      menu.showAtMouseEvent(e);
+    });
+
+    /* Delete button */
     const del = topRow.createSpan({ cls: "task-delete", text: "✕" });
     del.addEventListener("click", async () => {
       await this.plugin.removeTask(quadrant, index);
@@ -292,8 +408,58 @@ class EisenhowerView extends ItemView {
   }
 }
 
+/* ── Settings Tab ── */
+
+class EisenhowerSettingTab extends PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+
+    containerEl.createEl("h2", { text: "Eisenhower Matrix — Settings" });
+
+    new Setting(containerEl)
+      .setName("Data file")
+      .setDesc(
+        "Name/path of the markdown file where tasks are saved."
+      )
+      .addText((text) =>
+        text
+          .setPlaceholder("Eisenhower Matrix.md")
+          .setValue(this.plugin.settings.dataFile)
+          .onChange(async (value) => {
+            this.plugin.settings.dataFile =
+              value.trim() || DEFAULT_SETTINGS.dataFile;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Auto-complete Eliminate")
+      .setDesc(
+        "Tasks added to the Eliminate quadrant are automatically marked as done."
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoCompleteEliminate)
+          .onChange(async (value) => {
+            this.plugin.settings.autoCompleteEliminate = value;
+            await this.plugin.saveSettings();
+          })
+      );
+  }
+}
+
+/* ── Main Plugin ── */
+
 class EisenhowerMatrixPlugin extends Plugin {
   async onload() {
+    await this.loadSettings();
+
     this.registerView(VIEW_TYPE, (leaf) => new EisenhowerView(leaf, this));
 
     this.addRibbonIcon("layout-grid", "Eisenhower Matrix", () => {
@@ -305,6 +471,8 @@ class EisenhowerMatrixPlugin extends Plugin {
       name: "Open Eisenhower Matrix",
       callback: () => this.activateView(),
     });
+
+    this.addSettingTab(new EisenhowerSettingTab(this.app, this));
   }
 
   async activateView() {
@@ -321,8 +489,17 @@ class EisenhowerMatrixPlugin extends Plugin {
 
   onunload() {}
 
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+
   async loadData_() {
-    const file = this.app.vault.getAbstractFileByPath(DATA_FILE);
+    const filePath = this.settings.dataFile;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
       return { do: [], schedule: [], delegate: [], eliminate: [] };
     }
@@ -331,12 +508,13 @@ class EisenhowerMatrixPlugin extends Plugin {
   }
 
   async saveData_(data) {
+    const filePath = this.settings.dataFile;
     const content = this.toMarkdown(data);
-    const file = this.app.vault.getAbstractFileByPath(DATA_FILE);
+    const file = this.app.vault.getAbstractFileByPath(filePath);
     if (file) {
       await this.app.vault.modify(file, content);
     } else {
-      await this.app.vault.create(DATA_FILE, content);
+      await this.app.vault.create(filePath, content);
     }
   }
 
@@ -449,6 +627,32 @@ class EisenhowerMatrixPlugin extends Plugin {
       data[quadrant][index].done = !data[quadrant][index].done;
       await this.saveData_(data);
     }
+  }
+
+  async moveTask(fromQuadrant, index, toQuadrant) {
+    const data = await this.loadData_();
+    if (!data[fromQuadrant] || !data[fromQuadrant][index]) return;
+
+    const task = data[fromQuadrant].splice(index, 1)[0];
+
+    if (toQuadrant === "eliminate" && this.settings.autoCompleteEliminate) {
+      task.done = true;
+    }
+    if (fromQuadrant === "eliminate" && this.settings.autoCompleteEliminate) {
+      task.done = false;
+    }
+
+    if (fromQuadrant === "schedule" && toQuadrant !== "schedule") {
+      task.date = null;
+    }
+    if (fromQuadrant === "delegate" && toQuadrant !== "delegate") {
+      task.person = null;
+    }
+
+    if (!data[toQuadrant]) data[toQuadrant] = [];
+    data[toQuadrant].push(task);
+
+    await this.saveData_(data);
   }
 }
 
