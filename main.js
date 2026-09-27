@@ -13,6 +13,7 @@ const {
   Keymap,
   Platform,
   normalizePath,
+  setIcon,
 } = require("obsidian");
 
 const VIEW_TYPE = "eisenhower-matrix-view";
@@ -26,7 +27,10 @@ const QUADRANTS = [
   {
     id: "q1",
     cls: "q1",
-    icon: "🔴",
+    icon: "🔴", /* data file headings only */
+    num: 1,
+    lucide: "zap",
+    axes: "Urgent · Important",
     title: "Do Now",
     subtitle: "Urgent + Important",
     tag: "do",
@@ -34,7 +38,10 @@ const QUADRANTS = [
   {
     id: "q2",
     cls: "q2",
-    icon: "🔵",
+    icon: "🔵", /* data file headings only */
+    num: 2,
+    lucide: "calendar",
+    axes: "Not urgent · Important",
     title: "Schedule",
     subtitle: "Important + Not Urgent",
     tag: "schedule",
@@ -42,7 +49,10 @@ const QUADRANTS = [
   {
     id: "q3",
     cls: "q3",
-    icon: "🟡",
+    icon: "🟡", /* data file headings only */
+    num: 3,
+    lucide: "users",
+    axes: "Urgent · Not important",
     title: "Delegate",
     subtitle: "Urgent + Not Important",
     tag: "delegate",
@@ -50,7 +60,10 @@ const QUADRANTS = [
   {
     id: "q4",
     cls: "q4",
-    icon: "⚫",
+    icon: "⚫", /* data file headings only */
+    num: 4,
+    lucide: "archive-x",
+    axes: "Not urgent · Not important",
     title: "Eliminate",
     subtitle: "Not Urgent + Not Important",
     tag: "eliminate",
@@ -73,6 +86,15 @@ function dedent(lines) {
     .map((l) => l.match(/^[ \t]*/)[0].length);
   const min = indents.length ? Math.min(...indents) : 0;
   return lines.map((l) => l.slice(min)).join("\n");
+}
+
+/* "→ ⚡ Do Now" destination chip, colored by quadrant */
+function renderPreview(el, q) {
+  el.empty();
+  el.className = `eisenhower-preview preview-${q.cls}`;
+  el.createSpan({ text: "→" });
+  setIcon(el.createSpan({ cls: "eisenhower-icon" }), q.lucide);
+  el.createSpan({ text: q.title });
 }
 
 function getQuadrant(urgent, important) {
@@ -396,7 +418,7 @@ class MoveTaskModal extends Modal {
     contentEl.addClass("eisenhower-modal");
 
     if (this.targetQuadrant === "schedule") {
-      contentEl.createEl("h3", { text: "📅 Schedule date" });
+      contentEl.createEl("h3", { text: "Schedule date" });
       contentEl.createEl("p", {
         text: "Select the due date for this task.",
         cls: "eisenhower-modal-desc",
@@ -466,7 +488,7 @@ class MoveTaskModal extends Modal {
         if (e.key === "Enter") submit();
       });
     } else if (this.targetQuadrant === "delegate") {
-      contentEl.createEl("h3", { text: "👤 Assignee" });
+      contentEl.createEl("h3", { text: "Assignee" });
       contentEl.createEl("p", {
         text: "Enter the name of the person responsible for this task.",
         cls: "eisenhower-modal-desc",
@@ -662,8 +684,7 @@ class QuickAddModal extends Modal {
     const update = () => {
       const tag = getQuadrant(this.isUrgent, this.isImportant);
       const q = QUADRANTS.find((x) => x.tag === tag);
-      previewEl.textContent = `→ ${q.icon} ${q.title}`;
-      previewEl.className = `eisenhower-preview preview-${q.cls}`;
+      renderPreview(previewEl, q);
       dateWrap.classList.toggle("hidden", tag !== "schedule");
       personWrap.classList.toggle("hidden", tag !== "delegate");
       clearError();
@@ -697,7 +718,7 @@ class QuickAddModal extends Modal {
         this.plugin.settings.autoCompleteEliminate && quadrant === "eliminate";
       await this.plugin.addTask(quadrant, text, done, meta);
       const q = QUADRANTS.find((x) => x.tag === quadrant);
-      new Notice(`Added to ${q.icon} ${q.title}`);
+      new Notice(`Added to ${q.title}`);
       this.close();
     };
 
@@ -820,21 +841,6 @@ class EisenhowerView extends ItemView {
     this.sourcePath = this.plugin.dataPath();
 
     const wrap = container.createDiv({ cls: "eisenhower-container" });
-
-    /* ── Header with hide-completed toggle ── */
-    const header = wrap.createDiv({ cls: "eisenhower-header" });
-    const headerRow = header.createDiv({ cls: "eisenhower-header-row" });
-    headerRow.createEl("h2", { text: "Eisenhower Matrix" });
-
-    const toggleBtn = headerRow.createEl("button", {
-      cls: `eisenhower-hide-toggle ${this.hideCompleted ? "active" : ""}`,
-      attr: { title: this.hideCompleted ? "Show completed" : "Hide completed" },
-    });
-    toggleBtn.createSpan({ text: this.hideCompleted ? "👁️‍🗨️" : "👁️" });
-    toggleBtn.addEventListener("click", () => {
-      this.hideCompleted = !this.hideCompleted;
-      this.render();
-    });
 
     /* ── Input area ── */
     const inputArea = wrap.createDiv({ cls: "eisenhower-input-area" });
@@ -963,6 +969,17 @@ class EisenhowerView extends ItemView {
     this.updatePreview(previewEl);
     this.updateExtras();
 
+    const hideLabel = this.hideCompleted ? "Show completed" : "Hide completed";
+    const toggleBtn = toggleRow.createEl("button", {
+      cls: `eisenhower-hide-toggle clickable-icon ${this.hideCompleted ? "is-active" : ""}`,
+      attr: { "aria-label": hideLabel, title: hideLabel },
+    });
+    setIcon(toggleBtn, this.hideCompleted ? "eye-off" : "eye");
+    toggleBtn.addEventListener("click", () => {
+      this.hideCompleted = !this.hideCompleted;
+      this.render();
+    });
+
     const addTask = async () => {
       const text = input.value.trim();
       if (!text) return;
@@ -1023,8 +1040,12 @@ class EisenhowerView extends ItemView {
       if (e.key === "Enter") addTask();
     });
 
-    /* ── Quadrant grid ── */
-    const grid = wrap.createDiv({ cls: "eisenhower-grid" });
+    /* ── Matrix: axes outside, four equal cells forming a cross ── */
+    const grid = wrap.createDiv({ cls: "eisenhower-matrix" });
+    grid.createDiv({ cls: "matrix-axis axis-urgent", text: "Urgent" });
+    grid.createDiv({ cls: "matrix-axis axis-not-urgent", text: "Not urgent" });
+    grid.createDiv({ cls: "matrix-axis axis-important", text: "Important" });
+    grid.createDiv({ cls: "matrix-axis axis-not-important", text: "Not important" });
 
     for (const q of QUADRANTS) {
       const quadrantEl = grid.createDiv({
@@ -1080,16 +1101,23 @@ class EisenhowerView extends ItemView {
         }
       });
 
-      /* Title + counter */
+      /* Header: position in the matrix (narrow layouts), number, title, counter */
       const titleEl = quadrantEl.createDiv({ cls: "quadrant-title" });
-      titleEl.createSpan({ text: q.icon });
-      titleEl.createSpan({ text: q.title });
+      const mini = titleEl.createSpan({
+        cls: "quadrant-mini",
+        attr: { "aria-hidden": "true" },
+      });
+      for (const n of [1, 2, 3, 4]) {
+        mini.createSpan({ cls: n === q.num ? "is-on" : "" });
+      }
+      titleEl.createSpan({ cls: "quadrant-number", text: String(q.num) });
+      titleEl.createSpan({ cls: "quadrant-name", text: q.title });
       titleEl.createSpan({
         cls: "quadrant-counter",
-        text: `(${pending}/${tasks.length})`,
+        text: `${pending}/${tasks.length}`,
+        attr: { title: `${pending} pending of ${tasks.length}` },
       });
-
-      quadrantEl.createDiv({ cls: "quadrant-subtitle", text: q.subtitle });
+      quadrantEl.createDiv({ cls: "quadrant-axes", text: q.axes });
 
       const taskList = quadrantEl.createDiv({ cls: "quadrant-tasks" });
 
@@ -1147,8 +1175,7 @@ class EisenhowerView extends ItemView {
   updatePreview(el) {
     const tag = getQuadrant(this.isUrgent, this.isImportant);
     const q = QUADRANTS.find((x) => x.tag === tag);
-    el.textContent = `→ ${q.icon} ${q.title}`;
-    el.className = `eisenhower-preview preview-${q.cls}`;
+    renderPreview(el, q);
   }
 
   renderTask(parent, task, quadrant, index) {
@@ -1253,20 +1280,17 @@ class EisenhowerView extends ItemView {
 
     /* Date badge / overdue */
     if (quadrant === "schedule" && task.date) {
-      if (isOverdue) {
-        const badge = topRow.createSpan({ cls: "task-badge badge-overdue" });
-        badge.createSpan({ text: "⚠️ " });
-        badge.createSpan({ text: this.formatDate(task.date) });
-      } else {
-        const badge = topRow.createSpan({ cls: "task-badge badge-date" });
-        badge.createSpan({ text: "📅 " });
-        badge.createSpan({ text: this.formatDate(task.date) });
-      }
+      const badge = topRow.createSpan({
+        cls: `task-badge ${isOverdue ? "badge-overdue" : "badge-date"}`,
+        attr: isOverdue ? { title: "Overdue" } : {},
+      });
+      setIcon(badge.createSpan({ cls: "eisenhower-icon" }), isOverdue ? "alert-triangle" : "calendar");
+      badge.createSpan({ text: this.formatDate(task.date) });
     }
 
     if (quadrant === "delegate" && task.person) {
       const badge = topRow.createSpan({ cls: "task-badge badge-person" });
-      badge.createSpan({ text: "👤 " });
+      setIcon(badge.createSpan({ cls: "eisenhower-icon" }), "user");
       badge.createSpan({ text: task.person });
     }
 
@@ -1274,7 +1298,7 @@ class EisenhowerView extends ItemView {
       for (const q of QUADRANTS) {
         if (q.tag === quadrant) continue;
         menu.addItem((item) => {
-          item.setTitle(`${q.icon} ${q.title}`).onClick(() => {
+          item.setTitle(q.title).setIcon(q.lucide).onClick(() => {
             this.promptAndMoveTask(quadrant, index, q.tag, task.text);
           });
         });
@@ -1286,7 +1310,11 @@ class EisenhowerView extends ItemView {
     };
 
     /* Move menu button (desktop, on hover) */
-    const moveBtn = topRow.createSpan({ cls: "task-move", text: "⇄" });
+    const moveBtn = topRow.createSpan({
+      cls: "task-move",
+      attr: { "aria-label": "Move to…" },
+    });
+    setIcon(moveBtn, "arrow-left-right");
     moveBtn.addEventListener("click", (e) => {
       const menu = new Menu();
       addMoveItems(menu);
@@ -1294,7 +1322,11 @@ class EisenhowerView extends ItemView {
     });
 
     /* Delete button with confirmation (desktop, on hover) */
-    const del = topRow.createSpan({ cls: "task-delete", text: "✕" });
+    const del = topRow.createSpan({
+      cls: "task-delete",
+      attr: { "aria-label": "Delete" },
+    });
+    setIcon(del, "x");
     del.addEventListener("click", (e) => {
       const menu = new Menu();
       menu.addItem((item) =>
@@ -1306,9 +1338,9 @@ class EisenhowerView extends ItemView {
     /* All actions in one menu (touch screens) */
     const more = topRow.createSpan({
       cls: "task-more",
-      text: "⋯",
       attr: { "aria-label": "Task actions" },
     });
+    setIcon(more, "more-horizontal");
     more.addEventListener("click", (e) => {
       e.stopPropagation();
       const menu = new Menu();

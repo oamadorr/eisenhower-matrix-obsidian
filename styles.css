@@ -7,44 +7,15 @@
   overflow-y: auto;
 }
 
-.eisenhower-header {
-  text-align: center;
-  margin-bottom: 0;
-}
-
-.eisenhower-header h2 {
-  margin: 0;
-  font-size: 1.4em;
-}
-
-.eisenhower-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-
 /* ─── Toggle esconder concluídas ─────────────────────────── */
 
 .eisenhower-hide-toggle {
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 4px 8px;
-  cursor: pointer;
-  font-size: 0.85em;
-  line-height: 1;
-  transition: background 0.15s, border-color 0.15s;
+  margin-left: 4px;
+  color: var(--text-muted);
 }
 
-.eisenhower-hide-toggle:hover {
-  background: var(--background-modifier-hover);
-  border-color: var(--interactive-accent);
-}
-
-.eisenhower-hide-toggle.active {
-  background: var(--interactive-accent);
-  border-color: var(--interactive-accent);
+.eisenhower-hide-toggle.is-active {
+  color: var(--interactive-accent);
 }
 
 /* ─── Input único ─────────────────────────────────────────── */
@@ -132,8 +103,8 @@
 }
 
 .input-error {
-  border-color: #e74c3c !important;
-  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.25);
+  border-color: var(--color-red) !important;
+  box-shadow: 0 0 0 2px rgba(var(--color-red-rgb), 0.25);
 }
 
 .eisenhower-toggle-row {
@@ -183,11 +154,11 @@
 }
 
 .toggle-slider.active.urgent {
-  background: #e74c3c;
+  background: var(--color-red);
 }
 
 .toggle-slider.active.important {
-  background: #2e86de;
+  background: var(--color-blue);
 }
 
 .toggle-label {
@@ -207,79 +178,176 @@
   background: var(--background-primary);
 }
 
-.preview-q1 { color: #e74c3c; }
-.preview-q2 { color: #2e86de; }
-.preview-q3 { color: #d4a017; }
-.preview-q4 { color: #95a5a6; }
+/* ─── Quadrant colors (from the theme) ───────────────────── */
 
-/* ─── Grid ─────────────────────────────────────────────────── */
+.q1,
+.preview-q1 { --q-color: var(--color-red); --q-rgb: var(--color-red-rgb); }
+.q2,
+.preview-q2 { --q-color: var(--color-blue); --q-rgb: var(--color-blue-rgb); }
+.q3,
+.preview-q3 { --q-color: var(--color-yellow); --q-rgb: var(--color-yellow-rgb); }
+.q4,
+.preview-q4 { --q-color: var(--text-muted); --q-rgb: var(--mono-rgb-100); --q-tint: 0.03; }
 
-.eisenhower-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 10px;
-  flex: 1;
-  min-height: 300px;
+.eisenhower-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--q-color);
 }
+
+.eisenhower-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.eisenhower-icon svg,
+.task-badge svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* ─── Matrix ───────────────────────────────────────────────── */
+
+.eisenhower-container {
+  container-type: inline-size;
+}
+
+.eisenhower-matrix {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  grid-template-areas:
+    ".    urg  nurg"
+    "imp  q1   q2"
+    "nimp q3   q4";
+  flex: 1;
+  min-height: 420px;
+}
+
+.matrix-axis {
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.axis-urgent { grid-area: urg; padding-bottom: 6px; }
+.axis-not-urgent { grid-area: nurg; padding-bottom: 6px; }
+.axis-important,
+.axis-not-important {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  padding-left: 6px;
+}
+.axis-important { grid-area: imp; }
+.axis-not-important { grid-area: nimp; }
 
 .eisenhower-quadrant {
-  border-radius: 8px;
-  padding: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--background-modifier-border);
-  transition: box-shadow 0.2s, border-color 0.2s;
+  min-height: 0;
+  background: rgba(var(--q-rgb), var(--q-tint, 0.06));
+  border: 0 solid var(--background-modifier-border);
+  transition: box-shadow 0.2s, background 0.2s;
 }
 
+/* Outer frame + a thicker cross in the middle */
 .eisenhower-quadrant.q1 {
-  background: rgba(231, 76, 60, 0.1);
-  border-left: 4px solid #e74c3c;
+  grid-area: q1;
+  border-width: 1px 2px 2px 1px;
+  border-top-left-radius: 10px;
 }
-
 .eisenhower-quadrant.q2 {
-  background: rgba(46, 134, 222, 0.1);
-  border-left: 4px solid #2e86de;
+  grid-area: q2;
+  border-width: 1px 1px 2px 0;
+  border-top-right-radius: 10px;
 }
-
 .eisenhower-quadrant.q3 {
-  background: rgba(241, 196, 15, 0.1);
-  border-left: 4px solid #f1c40f;
+  grid-area: q3;
+  border-width: 0 2px 1px 1px;
+  border-bottom-left-radius: 10px;
 }
-
 .eisenhower-quadrant.q4 {
-  background: rgba(149, 165, 166, 0.1);
-  border-left: 4px solid #95a5a6;
+  grid-area: q4;
+  border-width: 0 1px 1px 0;
+  border-bottom-right-radius: 10px;
 }
 
 /* ─── Drag & Drop — quadrant highlight ───────────────────── */
 
 .eisenhower-quadrant.quadrant-dragover {
   box-shadow: inset 0 0 0 2px var(--interactive-accent);
-  border-color: var(--interactive-accent);
+  background: rgba(var(--q-rgb), 0.12);
 }
 
 .quadrant-title {
   font-weight: 700;
   font-size: 0.95em;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.quadrant-number {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: var(--q-color);
+  background: rgba(var(--q-rgb), 0.16);
+}
+
+.quadrant-name {
+  letter-spacing: 0.01em;
 }
 
 .quadrant-counter {
-  font-size: 0.8em;
-  font-weight: 400;
+  margin-left: auto;
+  font-size: 0.78em;
+  font-weight: 500;
   color: var(--text-muted);
-  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
 }
 
-.quadrant-subtitle {
-  font-size: 0.75em;
+/* Position-in-matrix glyph and axis line: only when stacked */
+.quadrant-mini,
+.quadrant-axes {
+  display: none;
+}
+
+.quadrant-mini {
+  flex-shrink: 0;
+  grid-template-columns: 6px 6px;
+  grid-template-rows: 6px 6px;
+  gap: 2px;
+}
+
+.quadrant-mini span {
+  border-radius: 1.5px;
+  background: var(--background-modifier-border);
+}
+
+.quadrant-mini span.is-on {
+  background: var(--q-color);
+}
+
+.quadrant-axes {
+  font-size: 0.72em;
   color: var(--text-muted);
-  margin-bottom: 8px;
-  font-style: italic;
+  margin: -6px 0 10px;
 }
 
 .quadrant-tasks {
@@ -452,12 +520,12 @@
 
 .task-top-row .task-move:hover {
   color: var(--interactive-accent);
-  background: rgba(46, 134, 222, 0.1);
+  background: rgba(var(--color-blue-rgb), 0.1);
 }
 
 .task-top-row .task-delete:hover {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+  color: var(--color-red);
+  background: rgba(var(--color-red-rgb), 0.1);
 }
 
 /* ─── Metadados (badges) ──────────────────────────────────── */
@@ -474,24 +542,24 @@
 }
 
 .badge-date {
-  background: rgba(46, 134, 222, 0.15);
-  color: #5ba8f7;
+  background: rgba(var(--color-blue-rgb), 0.15);
+  color: var(--color-blue);
 }
 
 .badge-person {
-  background: rgba(241, 196, 15, 0.15);
-  color: #f0c940;
+  background: rgba(var(--color-yellow-rgb), 0.18);
+  color: var(--text-normal);
 }
 
 /* ─── Overdue alert ───────────────────────────────────────── */
 
 .badge-overdue {
-  background: rgba(231, 76, 60, 0.15);
-  color: #e74c3c;
+  background: rgba(var(--color-red-rgb), 0.15);
+  color: var(--color-red);
 }
 
 .task-overdue {
-  border-left: 3px solid #e74c3c !important;
+  border-left: 3px solid var(--color-red) !important;
 }
 
 /* ─── Modal de mover tarefa ───────────────────────────────── */
@@ -532,7 +600,7 @@
 
 .eisenhower-modal-error {
   font-size: 0.82em;
-  color: #e74c3c;
+  color: var(--color-red);
   margin: 4px 0 0 0;
   min-height: 1.2em;
   width: 100%;
@@ -645,11 +713,43 @@
 
 /* ─── Responsive layout ─────────────────────────────────── */
 
-@media (max-width: 600px) {
-  .eisenhower-grid {
+/* Narrow panes and phones: stack the cells, show each cell's position */
+@container (max-width: 600px) {
+  .eisenhower-matrix {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
+    grid-template-areas: "q1" "q2" "q3" "q4";
+    gap: 10px;
+    min-height: 0;
+    flex: none; /* grow with the tasks; the container scrolls */
   }
+
+  .matrix-axis {
+    display: none;
+  }
+
+  .eisenhower-quadrant.q1,
+  .eisenhower-quadrant.q2,
+  .eisenhower-quadrant.q3,
+  .eisenhower-quadrant.q4 {
+    border-width: 1px;
+    border-radius: 10px;
+  }
+
+  .quadrant-mini {
+    display: inline-grid;
+  }
+
+  .quadrant-axes {
+    display: block;
+  }
+
+  .quadrant-tasks {
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 600px) {
 
   .eisenhower-input-row {
     flex-direction: column;
@@ -688,10 +788,6 @@
     padding: 10px 12px;
   }
 
-  .eisenhower-header h2 {
-    font-size: 1.15em;
-  }
-
   .eisenhower-quadrant {
     padding: 8px;
   }
@@ -703,5 +799,48 @@
   .eisenhower-task {
     padding: 6px 8px;
     font-size: 0.82em;
+  }
+}
+
+/* ─── Icon buttons in task rows ───────────────────────────── */
+
+.task-top-row .task-move,
+.task-top-row .task-delete {
+  display: inline-flex;
+  align-items: center;
+}
+
+.task-top-row .task-move svg,
+.task-top-row .task-delete svg,
+.task-top-row .task-more svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Keep the last cell clear of the phone navigation bar */
+.is-phone .eisenhower-container {
+  padding-bottom: 110px;
+}
+
+/* Very narrow: let date/person badges drop below the task text */
+@container (max-width: 420px) {
+  .task-top-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .task-top-row .task-text {
+    flex: 1 1 calc(100% - 90px);
+  }
+
+  .task-top-row .task-badge,
+  .task-top-row .task-children-toggle {
+    order: 5;
+    margin-left: 26px;
+  }
+
+  .task-top-row .task-badge + .task-badge,
+  .task-top-row .task-children-toggle + .task-badge {
+    margin-left: 0;
   }
 }

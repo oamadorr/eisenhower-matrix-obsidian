@@ -30,6 +30,7 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 ## Features
 
 ### Core
+- **A real matrix** — four equal cells under labeled **Urgent / Not urgent** and **Important / Not important** axes, colored by your theme (light and dark); on phones and narrow panes the cells stack, each with a small glyph showing its place in the grid
 - **Toggle-based input** — flip the Urgent and Important switches and the task is automatically routed to the correct quadrant
 - **Smart contextual fields** — Schedule tasks prompt for a due date 📅, Delegate tasks prompt for an assignee 👤
 - **Markdown persistence** — all tasks are saved as a readable `Eisenhower Matrix.md` file in your vault, fully compatible with search, backlinks, and Dataview
