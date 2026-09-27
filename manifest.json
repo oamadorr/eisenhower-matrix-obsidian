@@ -1,7 +1,7 @@
 {
   "id": "eisenhower-matrix",
   "name": "Eisenhower Matrix",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "minAppVersion": "0.15.0",
   "description": "Organize your tasks using the Eisenhower Matrix — prioritize by urgency and importance across 4 quadrants.",
   "author": "Amador Rosa",

@@ -44,6 +44,15 @@ const QUADRANTS = [
   },
 ];
 
+/* Local calendar date (YYYY-MM-DD), offset by N days — never UTC */
+function localDate(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 function getQuadrant(urgent, important) {
   if (urgent && important) return "do";
   if (!urgent && important) return "schedule";
@@ -72,18 +81,13 @@ class MoveTaskModal extends Modal {
 
       /* Quick date buttons */
       const quickDatesRow = contentEl.createDiv({ cls: "eisenhower-modal-quick-dates" });
-      const addDays = (days) => {
-        const d = new Date();
-        d.setDate(d.getDate() + days);
-        return d.toISOString().split("T")[0];
-      };
       const quickDates = [
-        { label: "Tomorrow", value: addDays(1) },
-        { label: "+7 days", value: addDays(7) },
-        { label: "+30 days", value: addDays(30) },
+        { label: "Tomorrow", value: localDate(1) },
+        { label: "+7 days", value: localDate(7) },
+        { label: "+30 days", value: localDate(30) },
       ];
 
-      const today = new Date().toISOString().split("T")[0];
+      const today = localDate();
       const dateInput = contentEl.createEl("input", {
         attr: { type: "date", min: today },
         cls: "eisenhower-modal-input",
@@ -293,7 +297,7 @@ class EisenhowerView extends ItemView {
     });
 
     const extrasRow = inputArea.createDiv({ cls: "eisenhower-extras-row" });
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDate();
     this.dateInput = extrasRow.createEl("input", {
       attr: { type: "date", min: today },
       cls: "eisenhower-date-input hidden",
@@ -305,15 +309,10 @@ class EisenhowerView extends ItemView {
 
     /* Quick date buttons in main form */
     this.dateQuickBtns = extrasRow.createDiv({ cls: "eisenhower-modal-quick-dates hidden" });
-    const addDays = (days) => {
-      const d = new Date();
-      d.setDate(d.getDate() + days);
-      return d.toISOString().split("T")[0];
-    };
     const mainQuickDates = [
-      { label: "Tomorrow", value: addDays(1) },
-      { label: "+7 days", value: addDays(7) },
-      { label: "+30 days", value: addDays(30) },
+      { label: "Tomorrow", value: localDate(1) },
+      { label: "+7 days", value: localDate(7) },
+      { label: "+30 days", value: localDate(30) },
     ];
     for (const qd of mainQuickDates) {
       const qBtn = this.dateQuickBtns.createEl("button", { text: qd.label });
@@ -423,7 +422,7 @@ class EisenhowerView extends ItemView {
           this.dateInput.focus();
           return;
         }
-        if (date < new Date().toISOString().split("T")[0]) {
+        if (date < localDate()) {
           this.dateInput.classList.add("input-error");
           this.dateError.textContent = "Date cannot be in the past.";
           this.dateError.classList.remove("hidden");
@@ -586,7 +585,7 @@ class EisenhowerView extends ItemView {
   }
 
   renderTask(parent, task, quadrant, index) {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDate();
     const isOverdue =
       quadrant === "schedule" && task.date && task.date < today && !task.done;
 
