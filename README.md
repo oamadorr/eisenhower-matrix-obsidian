@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/oamadorr/eisenhower-matrix-obsidian/releases"><img src="https://img.shields.io/github/v/release/oamadorr/eisenhower-matrix-obsidian?style=for-the-badge&color=blue" alt="Release"></a>
   <a href="https://github.com/oamadorr/eisenhower-matrix-obsidian/blob/main/LICENSE"><img src="https://img.shields.io/github/license/oamadorr/eisenhower-matrix-obsidian?style=for-the-badge" alt="License"></a>
-  <img src="https://img.shields.io/badge/Obsidian-0.15.0+-purple?style=for-the-badge&logo=obsidian" alt="Obsidian">
+  <img src="https://img.shields.io/badge/Obsidian-1.1.0+-purple?style=for-the-badge&logo=obsidian" alt="Obsidian">
 </p>
 
 ---
@@ -34,6 +34,14 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 - **Smart contextual fields** — Schedule tasks prompt for a due date 📅, Delegate tasks prompt for an assignee 👤
 - **Markdown persistence** — all tasks are saved as a readable `Eisenhower Matrix.md` file in your vault, fully compatible with search, backlinks, and Dataview
 - **Inline editing** — click any task text to edit it in place; <kbd>Enter</kbd> to save, <kbd>Escape</kbd> to cancel
+- **Quick capture** — run `Add task to Eisenhower Matrix` from anywhere (assign your own hotkey); <kbd>Alt</kbd>+<kbd>1</kbd>–<kbd>4</kbd> picks the quadrant, <kbd>Enter</kbd> adds
+- **Links and tags** — `[[links]]` and `#tags` in a task are clickable, with page preview on hover
+- **Sub-items** — indented lines under a task show as a collapsible list on its card
+
+### Your file stays yours
+- **Hand edits are kept** — frontmatter, notes, callouts, other headings and sub-items you write in the file survive every action
+- **Live sync** — edit the file in another tab or sync it from your phone; the matrix updates on its own
+- **Safe writes** — if the file changed under an action, nothing is written and the matrix refreshes instead
 
 ### Organization
 - **Drag & drop** — move tasks between quadrants by dragging them
@@ -52,6 +60,7 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 - **Custom data file** — choose which markdown file stores your tasks
 - **Auto-complete Eliminate** — tasks added to Eliminate are automatically marked as done
 - **Responsive layout** — works on desktop, tablet, and mobile screens
+- **Touch-friendly** — on mobile, the ⋯ button on each task opens Edit, Move and Delete
 
 ## How to Use
 
@@ -59,7 +68,9 @@ The **Eisenhower Matrix** (also known as the Urgent-Important Matrix) helps you 
 2. Type your task in the input field
 3. Toggle **Urgent** and/or **Important** to select the target quadrant
 4. Click **Add** or press <kbd>Enter</kbd>
-5. Check off completed tasks ✓, click text to edit, or drag to reorganize
+5. Check off completed tasks ✓, click text to edit, or drag to reorganize (on mobile, tap ⋯)
+
+You can also edit `Eisenhower Matrix.md` directly: add `- [ ] task` lines under a quadrant heading, indent sub-items under a task, and write notes anywhere — the matrix picks them up.
 
 ## Installation
 
